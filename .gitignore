@@ -1,0 +1,14 @@
+# IntelliJ
+.idea/
+*.iml
+
+# Environment
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+**/data/
