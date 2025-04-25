@@ -1,4 +1,4 @@
-# 🏗️ E-Commerce Infrastructure
+# 🏗️ Infrastructure – E-commerce Backend
 
 This repository contains the foundational infrastructure and shared tooling for a production-grade **microservices-based e-commerce backend** built with Java Spring Boot. It follows best practices in architecture, DevOps, and observability to enable scalability and maintainability.
 
