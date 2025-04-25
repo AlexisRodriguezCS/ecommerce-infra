@@ -1,18 +1,20 @@
 services:
-  postgres:
+  # Auth Service Database
+  auth-postgres:
     image: postgres:15
-    container_name: postgres
+    container_name: auth-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${AUTH_DB}
+      POSTGRES_USER: ${AUTH_DB_USER}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
     ports:
-      - "5432:5432"
+      - "5433:5432"  # External 5433 → Internal 5432
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - auth-postgres-data:/var/lib/postgresql/data
     networks:
       - backend
 
+  # Redis for caching/sessions
   redis:
     image: redis:7
     container_name: redis
@@ -21,17 +23,31 @@ services:
     networks:
       - backend
 
+  # RabbitMQ for messaging
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"     # Messaging port
-      - "15672:15672"   # Admin UI
+      - "5672:5672"     # App communication
+      - "15672:15672"   # Management UI
     networks:
       - backend
 
+  # Config server
+  config-server:
+    image: ecommerce-config-server:latest
+    container_name: config-server
+    build:
+      context: ../ecommerce-config-server
+    ports:
+      - "8888:8888"
+    networks:
+      - backend
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+
 volumes:
-  postgres-data:
+  auth-postgres-data:
 
 networks:
   backend:
