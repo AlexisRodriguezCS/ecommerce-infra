@@ -1,0 +1,60 @@
+name: 🧪 Dev Infra Health Boot Test
+
+on:
+  push:
+    branches:
+      - development
+    paths:
+      - 'docker-compose.dev.yml'
+      - '.github/workflows/dev-infra-healthcheck.yml'
+      - '**/vault/**'
+
+  pull_request:
+    branches:
+      - development
+    paths:
+      - 'docker-compose.dev.yml'
+      - '.github/workflows/dev-infra-healthcheck.yml'
+      - '**/vault/**'
+
+
+jobs:
+  health-test:
+    name: Infra Stack Boots & Responds
+    runs-on: ubuntu-latest
+    env:
+      VAULT_DEV_ROOT_TOKEN_ID: ${{ secrets.VAULT_DEV_ROOT_TOKEN_ID }}
+      VAULT_DEV_LISTEN_ADDRESS: ${{ secrets.VAULT_DEV_LISTEN_ADDRESS }}
+      VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
+      AUTH_DB: ${{ secrets.AUTH_DB }}
+      AUTH_DB_USER: ${{ secrets.AUTH_DB_USER }}
+      AUTH_DB_PASSWORD: ${{ secrets.AUTH_DB_PASSWORD }}
+      USER_DB: ${{ secrets.USER_DB }}
+      USER_DB_USER: ${{ secrets.USER_DB_USER }}
+      USER_DB_PASSWORD: ${{ secrets.USER_DB_PASSWORD }}
+
+    steps:
+      - name: 📦 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker Compose
+        run: |
+          docker compose -f docker-compose.dev.yml pull
+
+      - name: 🚀 Start services
+        run: |
+          docker compose -f docker-compose.dev.yml up -d
+
+      - name: ⏱ Wait for services to be healthy
+        run: |
+          docker compose -f docker-compose.dev.yml ps
+          sleep 30  # adjust if needed depending on service startup times
+
+      - name: 🔎 Ping Config Server
+        run: |
+          curl --fail http://localhost:8888/actuator/health
+
+      - name: 📦 Stop and cleanup
+        if: always()
+        run: |
+          docker compose -f docker-compose.dev.yml down -v
