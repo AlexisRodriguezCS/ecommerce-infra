@@ -1,0 +1,104 @@
+services:
+  # ============================
+  # 🔐 Vault for Secrets
+  # ============================
+  vault:
+    image: hashicorp/vault
+    container_name: vault-dev
+    ports:
+      - "8200:8200"
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID}
+      VAULT_DEV_LISTEN_ADDRESS: ${VAULT_DEV_LISTEN_ADDRESS}
+      VAULT_ADDR: ${VAULT_ADDR}
+    networks:
+      - backend
+    volumes:
+      - ./vault/vault-init.sh:/vault-init.sh
+      - ./vault/secrets:/vault/secrets
+    command: >
+      sh -c "
+        vault server -dev -dev-root-token-id=${VAULT_DEV_ROOT_TOKEN_ID} -dev-listen-address=${VAULT_DEV_LISTEN_ADDRESS} &
+        chmod +x /vault-init.sh &&
+        sh /vault-init.sh &&
+        tail -f /dev/null
+      "
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8200/v1/sys/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ================================
+  # 🛢️ Auth Service PostgreSQL
+  # ================================
+  auth-postgres:
+    image: postgres:15
+    container_name: auth-postgres
+    environment:
+      POSTGRES_DB: ${AUTH_DB}
+      POSTGRES_USER: ${AUTH_DB_USER}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - auth-postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  # ================================
+  # 🛢️ User Service PostgreSQL
+  # ================================
+  user-postgres:
+    image: postgres:15
+    container_name: user-postgres
+    environment:
+      POSTGRES_DB: ${USER_DB}
+      POSTGRES_USER: ${USER_DB_USER}
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD}
+    ports:
+      - "5434:5432"
+    volumes:
+      - user-postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  # ============================
+  # 🔧 Config Server
+  # ============================
+  config-server:
+    image: ecommerce-config-server:latest
+    container_name: config-server
+    build:
+      context: ../ecommerce-config-server
+    ports:
+      - "8888:8888"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+#    depends_on:
+#      vault:
+#          condition: service_healthy
+    networks:
+      - backend
+
+  # ============================
+  # ⚡ Redis (Session/Caching)
+  # ============================
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - backend
+
+volumes:
+  auth-postgres-data:
+  user-postgres-data:
+
+networks:
+  backend:
+    driver: bridge

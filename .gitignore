@@ -4,7 +4,6 @@
 
 # Environment
 .env
-.env.*
 
 # OS
 .DS_Store
@@ -12,3 +11,6 @@ Thumbs.db
 
 # Docker
 **/data/
+
+# Secrets
+/vault/secrets/
