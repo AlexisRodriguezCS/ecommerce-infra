@@ -34,9 +34,10 @@ This repository contains the foundational infrastructure and shared tooling for 
 
 ## 📂 Project Structure
 
-| Repository                                                                                               | Description                              |
-|----------------------------------------------------------------------------------------------------------|------------------------------------------|
+| Repository                                                                                              | Description                              |
+|---------------------------------------------------------------------------------------------------------|------------------------------------------|
 | [`ecommerce-auth-service`](https://github.com/AlexisRodriguezCS/ecommerce-auth-service)                 | JWT-based authentication and RBAC        |
+| [`ecommerce-user-service`](https://github.com/AlexisRodriguezCS/ecommerce-user-service)                 | User profile management and account details        |
 | [`ecommerce-product-service`](https://github.com/AlexisRodriguezCS/ecommerce-product-service)           | Product catalog management               |
 | [`ecommerce-inventory-service`](https://github.com/AlexisRodriguezCS/ecommerce-inventory-service)       | Inventory tracking and stock updates     |
 | [`ecommerce-order-service`](https://github.com/AlexisRodriguezCS/ecommerce-order-service)               | Order creation and processing            |
@@ -46,7 +47,7 @@ This repository contains the foundational infrastructure and shared tooling for 
 | [`ecommerce-discovery-server`](https://github.com/AlexisRodriguezCS/ecommerce-discovery-server)         | Eureka Discovery Server                  |
 | [`ecommerce-config-server`](https://github.com/AlexisRodriguezCS/ecommerce-config-server)               | Spring Cloud Config Server               |
 | [`ecommerce-config-repo`](https://github.com/AlexisRodriguezCS/ecommerce-config-repo)                   | Centralized config files and secrets     |
-| **This Repo**                                                                                             | Infrastructure: Docker, ELK, CI/CD, docs |
+| **This Repo**                                                                                           | Infrastructure: Docker, ELK, CI/CD, docs |
 
 ---
 

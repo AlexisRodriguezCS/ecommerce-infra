@@ -1,0 +1,116 @@
+name: Reusable CI Workflow
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        required: true
+        type: string
+      java_version:
+        required: false
+        type: string
+        default: '21'
+      docker_image_name:
+        required: true
+        type: string
+
+jobs:
+  build-test-publish:
+    name: Build, Test, and Publish Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ inputs.java_version }}
+
+      - name: Grant execute permission for Gradle
+        run: chmod +x gradlew
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+
+      - name: Set image metadata
+        id: meta
+        run: |
+          IMAGE_NAME=${{ inputs.docker_image_name }}
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "sha_tag=${GITHUB_SHA}" >> $GITHUB_OUTPUT
+          echo "latest_tag=latest" >> $GITHUB_OUTPUT
+
+      - name: Export IMAGE_TAG for Testcontainers
+        run: echo "IMAGE_TAG=${{ steps.meta.outputs.sha_tag }}" >> $GITHUB_ENV
+
+      - name: Build Docker image for testing
+        run: |
+          docker build -t ${{ steps.meta.outputs.image_name }}:${{ steps.meta.outputs.sha_tag }} \
+                       -t ${{ steps.meta.outputs.image_name }}:${{ steps.meta.outputs.latest_tag }} .
+
+      - name: Run Tests with Coverage
+        run: ./gradlew test jacocoTestReport
+
+      - name: Run OWASP Dependency Check
+        run: ./gradlew dependencyCheckAnalyze
+
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.service_name }}-test-reports
+          path: build/reports/tests/test
+          if-no-files-found: error
+
+      - name: Upload Coverage Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.service_name }}-coverage-reports
+          path: build/reports/jacoco/test/html
+          if-no-files-found: error
+
+      - name: Upload OWASP Dependency Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.service_name }}-security-reports
+          path: build/reports/dependency-check-report.html
+          if-no-files-found: warn
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push Docker image SHA tag to GHCR
+        run: docker push ${{ steps.meta.outputs.image_name }}:${{ steps.meta.outputs.sha_tag }}
+
+      - name: Push Docker image latest tag to GHCR
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && success() }}
+        run: docker push ${{ steps.meta.outputs.image_name }}:${{ steps.meta.outputs.latest_tag }}
+
+      - name: Message Test Report Repo
+        if: ${{ success() && github.event_name != 'repository_dispatch' }}
+        run: |
+          curl -X POST https://api.github.com/repos/AlexisRodriguezCS/ecommerce-test-reports/dispatches \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.REPORTS_TRIGGER_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -d '{
+                  "event_type": "trigger-report-deploy",
+                  "client_payload": {
+                    "service": "${{ inputs.service_name }}",
+                    "run_id": "'"${{ github.run_id }}"'"
+                  }
+                }'
