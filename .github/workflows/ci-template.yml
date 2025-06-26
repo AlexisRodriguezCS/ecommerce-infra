@@ -13,6 +13,9 @@ on:
       docker_image_name:
         required: true
         type: string
+    secrets:
+      REPORTS_TRIGGER_TOKEN:
+        required: true
 
 jobs:
   build-test-publish:
